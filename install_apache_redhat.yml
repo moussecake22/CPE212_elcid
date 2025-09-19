@@ -1,0 +1,44 @@
+---
+- name: Install Apache and PHP on Red Hat systems
+  hosts: all
+  become: yes
+  vars:
+    apache_package: httpd
+    php_package: php
+    apache_service: httpd
+    firewall_service: http
+
+  tasks:
+    - name: Install Apache and PHP packages
+      dnf:
+        name:
+          - "{{ apache_package }}"
+          - "{{ php_package }}"
+        state: latest
+        update_cache: yes
+
+    - name: Start and enable Apache service
+      systemd:
+        name: "{{ apache_service }}"
+        state: started
+        enabled: yes
+
+    - name: Configure firewall to allow HTTP traffic
+      firewalld:
+        service: "{{ firewall_service }}"
+        permanent: yes
+        state: enabled
+      notify:
+        - reload firewall
+
+    - name: Verify Apache is running
+      uri:
+        url: "http://localhost"
+        status_code: 200
+      register: apache_status
+      failed_when: apache_status.status != 200
+
+  handlers:
+    - name: reload firewall
+      command: firewall-cmd --reload
+
